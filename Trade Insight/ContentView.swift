@@ -6,81 +6,65 @@
 //
 
 import SwiftUI
-import CoreData
 
 struct ContentView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-
-    @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
-
+    @State private var selectedTab = 0
+    @State private var selectedPosition: Position? = nil
+    
     var body: some View {
-        NavigationView {
+        NavigationSplitView {
+            // 侧边栏
             List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-                    } label: {
-                        Text(item.timestamp!, formatter: itemFormatter)
-                    }
+                NavigationLink(destination: PositionListView()) {
+                    Label("持仓管理", systemImage: "chart.line.uptrend.xyaxis")
                 }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
+                .tag(0)
+                
+                NavigationLink(destination: Text("投资组合分析").font(.largeTitle)) {
+                    Label("投资组合分析", systemImage: "chart.pie")
                 }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
+                .tag(1)
+                
+                NavigationLink(destination: Text("交易记录").font(.largeTitle)) {
+                    Label("交易记录", systemImage: "list.bullet.rectangle")
                 }
+                .tag(2)
+                
+                NavigationLink(destination: Text("市场行情").font(.largeTitle)) {
+                    Label("市场行情", systemImage: "globe")
+                }
+                .tag(3)
+                
+                NavigationLink(destination: Text("设置").font(.largeTitle)) {
+                    Label("设置", systemImage: "gear")
+                }
+                .tag(4)
             }
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            .listStyle(SidebarListStyle())
+            .navigationTitle("Trade Insight")
+        } detail: {
+            // 详情视图
+            if let selectedPosition = selectedPosition {
+                PositionDetailView(position: selectedPosition)
+            } else {
+                // 默认显示持仓列表
+                PositionListView()
+                    .navigationTitle("持仓管理")
             }
         }
     }
 }
 
-private let itemFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter
-}()
+// 扩展PositionListView，添加选择持仓的功能
+extension PositionListView {
+    init(selectedPosition: Binding<Position?> = .constant(nil)) {
+        _positions = State(initialValue: Position.samples)
+        _selectedAccount = State(initialValue: nil)
+        _sortOrder = State(initialValue: .none)
+        _searchText = State(initialValue: "")
+    }
+}
 
 #Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    ContentView()
 }
